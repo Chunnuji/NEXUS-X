@@ -22,7 +22,7 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final UserInfoDetailService userInfoDetailService;
-    private final AuthUtil authUtil;
+    private final TokenUtil tokenUtil;
 
     @Override
     protected void doFilterInternal(
@@ -39,12 +39,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        String username = authUtil.getUserNameFromToken(token);
+        String username = tokenUtil.getUserNameFromToken(token);
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserInfo user = userInfoDetailService.loadUserByUsername(username);
 
-            if (authUtil.validateToken(token, user)) {
+            if (tokenUtil.validateToken(token, user)) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 user,

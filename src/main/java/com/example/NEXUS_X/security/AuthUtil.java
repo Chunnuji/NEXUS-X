@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
-public class AuthUtil {
+public class AuthUtil implements TokenUtil{
 
     @Value("${jwt.secret}")
     private String secretKey;
