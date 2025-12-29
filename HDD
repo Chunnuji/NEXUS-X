@@ -1,0 +1,178 @@
+# Nexus-X — High Level Design (HLD)
+
+## 1. Overview
+
+**Nexus-X** is a scalable, microservices-based commerce platform designed to demonstrate enterprise-grade architecture, SOLID principles, design patterns, JWT security, Kafka-based eventing, and optional Redis caching.
+
+## 2. Goals
+
+* Modular domain separation (Users, Products, Orders, Cart, History/Analytics)
+* Secure authentication & authorization (JWT)
+* Event-driven workflows (Kafka)
+* Horizontal scalability & fault isolation
+* Observability & auditability
+
+## 3. High-Level Architecture
+
+```
+Client (Web/Mobile)
+        |
+   API Gateway
+        |
+-------------------------------------------------
+|  User Service | Product Service | Order Service|
+|  Cart Service | History Service | Auth Service |
+-------------------------------------------------
+        |
+     Message Broker (Kafka)
+        |
+   Analytics / History Consumers
+
+Datastores:
+- Each service owns its DB (PostgreSQL)
+- Optional Redis for cache/session
+```
+
+## 4. Services & Responsibilities
+
+### 4.1 API Gateway
+
+* Single entry point
+* Request routing
+* JWT validation
+* Rate limiting, logging
+
+### 4.2 Auth / User Service
+
+**Endpoints**:
+
+* `/signup`
+* `/login`
+
+**Responsibilities**:
+
+* User registration & authentication
+* JWT issuance & validation
+* Role-based access control (RBAC)
+
+**DB**: Users, Roles
+
+---
+
+### 4.3 Product Service
+
+**Endpoints**:
+
+* `/products`
+* `/product/{id}`
+
+**Responsibilities**:
+
+* Product catalog management
+* Pricing & availability
+* Publish product events
+
+**DB**: Products
+
+---
+
+### 4.4 Cart Service
+
+**Endpoints**:
+
+* `/cart/add`
+* `/cart/remove`
+* `/cart/view`
+
+**Responsibilities**:
+
+* Temporary cart state
+* Price calculation
+
+**Storage**:
+
+* Redis (preferred) or DB
+
+---
+
+### 4.5 Order Service
+
+**Endpoints**:
+
+* `/orders`
+* `/orders/{id}`
+
+**Responsibilities**:
+
+* Order creation & lifecycle
+* Payment orchestration (future)
+* Emit order events
+
+**DB**: Orders
+
+---
+
+### 4.6 History / Analytics Service
+
+**Responsibilities**:
+
+* Consume Kafka events
+* Build user activity & order history
+* Generate insights
+
+**DB**: History / Analytics
+
+## 5. Event-Driven Communication (Kafka)
+
+**Topics**:
+
+* `user.created`
+* `product.updated`
+* `cart.updated`
+* `order.created`
+* `order.completed`
+
+**Producers**:
+
+* User, Product, Order Services
+
+**Consumers**:
+
+* History Service
+* Notification Service (future)
+
+## 6. Data Ownership
+
+* Each microservice owns its schema
+* No direct DB access across services
+* Communication via REST or events
+
+## 7. Security
+
+* JWT-based authentication
+* Token validation at API Gateway
+* Role-based authorization
+
+## 8. Non-Functional Requirements
+
+* Scalability: Horizontal scaling per service
+* Fault tolerance: Circuit breakers
+* Observability: Logs, metrics, tracing
+* Consistency: Eventual consistency
+
+## 9. Tech Stack (Proposed)
+
+* Java 17, Spring Boot
+* Spring Cloud Gateway
+* Spring Security + JWT
+* Kafka
+* PostgreSQL
+* Redis (optional)
+* Docker
+
+## 10. Future Enhancements
+
+* Payment Service
+* Notification Service (Email/SMS)
+* Recommendation Engine
+* Admin Dashboard

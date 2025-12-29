@@ -1,0 +1,25 @@
+# Login Service
+
+1.Sign up(/signup)
+Entity-
+
+{
+    id
+    username (unique)
+    passwordHash
+    role (default = USER)
+    isActive
+}
+
+2. Login(/login)
+Entity-
+{
+    username,
+    password
+}
+
+response - JWT token {
+   userId,
+   username,
+   role
+}
