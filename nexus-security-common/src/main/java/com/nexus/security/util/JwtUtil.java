@@ -2,6 +2,7 @@ package com.nexus.security.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import java.util.List;
 
 public class JwtUtil {
 
@@ -22,7 +23,7 @@ public class JwtUtil {
         return claims.getSubject();
     }
 
-    public String getRole(Claims claims) {
-        return claims.get("role", String.class);
+    public List<String> getRoles(Claims claims) {
+        return claims.get("roles", List.class);
     }
 }

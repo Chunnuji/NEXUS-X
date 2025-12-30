@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -29,24 +30,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // If already authenticated, skip
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String header = request.getHeader("Authorization");
 
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
 
-            Claims claims = jwtUtil.validateToken(token);
+            try {
+                Claims claims = jwtUtil.validateToken(token);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            claims.getSubject(),
-                            null,
-                            List.of(new SimpleGrantedAuthority(
-                                    "ROLE_" + claims.get("role")
-                            ))
-                    );
+                String role = claims.get("role", String.class);
 
-            SecurityContextHolder.getContext()
-                    .setAuthentication(authentication);
+                List<GrantedAuthority> authorities =
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role));
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                claims.getSubject(),
+                                null,
+                                authorities
+                        );
+
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authentication);
+
+            } catch (Exception ex) {
+                // Invalid or expired token → do NOT authenticate
+                SecurityContextHolder.clearContext();
+            }
         }
 
         filterChain.doFilter(request, response);
