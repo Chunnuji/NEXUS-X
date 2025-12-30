@@ -1,3 +1,5 @@
+Run - mvn clean build
+
 Install the JAR locally and use as Maven dependency
 
 Install your JAR in your local Maven repository:

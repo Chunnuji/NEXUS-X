@@ -1,0 +1,19 @@
+#LLD
+
+Product
+{
+    id,
+    name (unique),
+    price,
+    quantity,
+    mfd date
+}
+
+/post
+/delete
+/update
+role - SELLER/ADMIN
+
+/get
+role - USER/SELLER/ADMIN
+
