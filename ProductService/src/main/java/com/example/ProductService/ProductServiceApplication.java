@@ -2,8 +2,10 @@ package com.example.ProductService;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
 
 @SpringBootApplication
+@Import(com.example.common.config.SharedSecurityConfig.class)
 public class ProductServiceApplication {
 
 	public static void main(String[] args) {
