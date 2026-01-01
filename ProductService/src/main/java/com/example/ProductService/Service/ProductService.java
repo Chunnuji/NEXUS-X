@@ -4,7 +4,6 @@ import com.example.ProductService.DTO.ProductRequest;
 import com.example.ProductService.DTO.ProductResponse;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface ProductService {
 

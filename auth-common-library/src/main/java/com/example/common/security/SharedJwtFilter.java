@@ -1,5 +1,6 @@
 package com.example.common.security;
 
+import com.example.common.dto.UserPrincipal;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -12,7 +13,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -31,13 +35,25 @@ public class SharedJwtFilter extends OncePerRequestFilter {
 
             if (authUtil.validateToken(token)) {
                 Claims claims = authUtil.getClaims(token);
+
+                // 1. Extract the specific 'userId' claim and other data from the token
+                Integer userId = claims.get("userId", Integer.class);
                 String username = claims.getSubject();
-                List<String> roles = (List<String>) claims.get("roles");
+
+                // Map roles from the JWT (assuming they are stored as a List of Strings)
+                List<String> rolesList = (List<String>) claims.get("roles");
+                Set<String> rolesSet = rolesList != null ? new HashSet<>(rolesList) : Collections.emptySet();
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                    // 2. Create the UserPrincipal record using the extracted ID
+                    UserPrincipal principal = new UserPrincipal(userId, username, rolesSet);
+
+                    // 3. Set the custom principal object into the Authentication token
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            username, null,
-                            roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
+                            principal,
+                            null,
+                            principal.getAuthorities() // Uses the overridden method in your record
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
