@@ -1,11 +1,12 @@
 package com.example.OrderService.Service;
 
-import com.example.OrderService.DTO.OrderRequest;
-import com.example.OrderService.DTO.OrderResponse;
+import com.example.OrderService.DTO.*;
 import com.example.OrderService.Dao.OrderRepository;
 import com.example.OrderService.Entity.Orders;
+import com.example.OrderService.KafkaConfig.OrderEventProducer;
 import com.example.common.dto.UserPrincipal;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -21,9 +22,14 @@ import static com.example.OrderService.Entity.OrderStatus.*;
 public class OrdersServiceImpl implements OrdersService{
 
     private final OrderRepository orderRepository;
+    private final InventoryService inventoryService;
+    private final OrderEventProducer orderEventProducer;
 
-    public OrdersServiceImpl(OrderRepository orderRepository) {
+    @Autowired
+    public OrdersServiceImpl(OrderRepository orderRepository, InventoryService inventoryService, OrderEventProducer orderEventProducer) {
         this.orderRepository = orderRepository;
+        this.inventoryService = inventoryService;
+        this.orderEventProducer = orderEventProducer;
     }
 
     @Override
@@ -64,6 +70,16 @@ public class OrdersServiceImpl implements OrdersService{
         Orders orders = orderRepository.findByOrderId(orderId);
         orders.setStatus(CANCELLED);
         Orders orders1 = orderRepository.save(orders);
+        //kafka event
+        orderEventProducer.sendOrderCanceledEvent(
+                new OrderCanceledEvent(
+                        orders1.getOrderId(),
+                        orders1.getProductId(),
+                        orders1.getQuantity(),
+                        orders1.getTotalPrice(),
+                        CANCELLED.name()
+                )
+        );
         OrderResponse orderResponse = new OrderResponse();
         BeanUtils.copyProperties(orders1,orderResponse);
         return orderResponse;
@@ -85,6 +101,27 @@ public class OrdersServiceImpl implements OrdersService{
         BigDecimal totalPrice = BigDecimal.valueOf(orderRequest.getQuantity()).multiply(orderRequest.getUnitPrice());
         orders.setTotalPrice(totalPrice);
         Orders responseOrder = orderRepository.save(orders);
+
+        //Inventory Update
+        InventoryRequest inventoryRequest = new InventoryRequest(
+                responseOrder.getOrderId(),
+                responseOrder.getProductId(),
+                responseOrder.getQuantity());
+
+        inventoryService.reserveStock(inventoryRequest);
+
+        //kafka event
+        orderEventProducer.sendOrderCreatedEvent(
+                new OrderCreatedEvent(
+                        responseOrder.getOrderId(),
+                        responseOrder.getProductId(),
+                        responseOrder.getQuantity(),
+                        totalPrice,
+                        CREATED.name()
+                )
+        );
+
+
         OrderResponse orderResponse = new OrderResponse();
         BeanUtils.copyProperties(responseOrder,orderResponse);
         return orderResponse;
@@ -95,6 +132,16 @@ public class OrdersServiceImpl implements OrdersService{
         Orders orders = orderRepository.findByOrderId(orderId);
         orders.setStatus(COMPLETED);
         Orders orders1 = orderRepository.save(orders);
+        //kafka event
+        orderEventProducer.sendOrderCompletedEvent(
+                new OrderCompletedEvent(
+                        orders1.getOrderId(),
+                        orders1.getProductId(),
+                        orders1.getQuantity(),
+                        orders1.getTotalPrice(),
+                        COMPLETED.name()
+                )
+        );
         OrderResponse orderResponse = new OrderResponse();
         BeanUtils.copyProperties(orders1,orderResponse);
         return orderResponse;
