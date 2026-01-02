@@ -4,12 +4,18 @@ import com.example.OrderService.DTO.*;
 import com.example.OrderService.Dao.OrderRepository;
 import com.example.OrderService.Entity.Orders;
 import com.example.OrderService.KafkaConfig.OrderEventProducer;
+import com.example.OrderService.Util.AuthorizationHeaderProvider;
 import com.example.common.dto.UserPrincipal;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,14 +28,16 @@ import static com.example.OrderService.Entity.OrderStatus.*;
 public class OrdersServiceImpl implements OrdersService{
 
     private final OrderRepository orderRepository;
-    private final InventoryService inventoryService;
+    private final AuthorizationHeaderProvider authHeaderProvider;
     private final OrderEventProducer orderEventProducer;
+    private final RestTemplate restTemplate;
 
     @Autowired
-    public OrdersServiceImpl(OrderRepository orderRepository, InventoryService inventoryService, OrderEventProducer orderEventProducer) {
+    public OrdersServiceImpl(OrderRepository orderRepository, AuthorizationHeaderProvider authHeaderProvider, OrderEventProducer orderEventProducer, RestTemplate restTemplate) {
         this.orderRepository = orderRepository;
-        this.inventoryService = inventoryService;
+        this.authHeaderProvider = authHeaderProvider;
         this.orderEventProducer = orderEventProducer;
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -108,7 +116,20 @@ public class OrdersServiceImpl implements OrdersService{
                 responseOrder.getProductId(),
                 responseOrder.getQuantity());
 
-        inventoryService.reserveStock(inventoryRequest);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.AUTHORIZATION,
+                authHeaderProvider.getAuthorizationHeader());
+
+        HttpEntity<InventoryRequest> entity = new HttpEntity<>(inventoryRequest, headers);
+        ResponseEntity<InventoryStatus> response =
+                restTemplate.exchange(
+                        "http://localhost:8084/inventory/reserveStock",
+                        HttpMethod.POST,
+                        entity,
+                        InventoryStatus.class
+                );
+
+        InventoryStatus inventoryStatus = response.getBody();
 
         //kafka event
         orderEventProducer.sendOrderCreatedEvent(
